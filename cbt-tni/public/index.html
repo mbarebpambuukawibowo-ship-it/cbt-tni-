@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>CBT Ujian Tes Akademik TNI</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- Overlay Freeze Deteksi Pelanggaran -->
+  <div id="freezeOverlay" class="hidden">
+    <div class="freeze-box">
+      <h2>DILARANG KELUAR TAB!</h2>
+      <p>Sistem membeku selama <span id="freezeTimer">5</span> detik.</p>
+    </div>
+  </div>
+
+  <!-- HALAMAN LOGIN 1 -->
+  <div id="login1Page" class="page">
+    <div class="banner-loreng">
+      <h1>CBT UJIAN AKADEMIK TNI</h1>
+    </div>
+    <div class="login-container">
+      <div class="sticker-wrapper">
+        <img src="tni1.jfif" class="sticker" alt="TNI 1">
+        <img src="tni2.jfif" class="sticker" alt="TNI 2">
+        <img src="tni3.jfif" class="sticker" alt="TNI 3">
+      </div>
+      <h2>LOGIN SISTEM</h2>
+      <div class="form-group">
+        <label>Login Sebagai:</label>
+        <select id="roleSelect">
+          <option value="siswa">Siswa / Peserta</option>
+          <option value="guru">Guru / Pengawas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nomor Peserta / NIP Guru:</label>
+        <input type="text" id="nomorPeserta" placeholder="Masukkan nomor...">
+      </div>
+      <div class="form-group">
+        <label>Kata Sandi:</label>
+        <input type="password" id="sandi" placeholder="Masukkan sandi bebas...">
+      </div>
+      <button onclick="handleLogin1()">LOGIN</button>
+      <div id="login1Feedback" class="feedback"></div>
+    </div>
+  </div>
+
+  <!-- HALAMAN LOGIN 2 (KHUSUS SISWA) -->
+  <div id="login2Page" class="page hidden">
+    <div class="login2-layout">
+      <div class="deskripsi-box">
+        <h3>DESKRIPSI UJIAN AKADEMIK TNI</h3>
+        <p>Ujian terdiri dari 5 mata pelajaran (Matematika, B. Indonesia, B. Inggris, IPA, IPS) dengan total 30 soal. Waktu pengerjaan adalah 75 menit secara otomatis dari sistem.</p>
+        <hr>
+        <p><strong>Waktu Pengerjaan:</strong> 75 Menit (Otomatis)</p>
+        <p><strong>Jumlah Soal:</strong> 30 Soal (Otomatis)</p>
+      </div>
+      <div class="form-login2">
+        <h3>VERIFIKASI DATA & TOKEN</h3>
+        <div class="form-group">
+          <label>Nama Peserta:</label>
+          <input type="text" id="namaPeserta" placeholder="Masukkan Nama Lengkap">
+        </div>
+        <div class="form-group">
+          <label>Tanggal Lahir:</label>
+          <input type="date" id="tglLahir">
+        </div>
+        <div class="form-group">
+          <label>Token Ujian (Diberikan Guru):</label>
+          <input type="text" id="tokenInput" placeholder="Masukkan Token">
+        </div>
+        <button onclick="handleLogin2()">MULAI UJIAN</button>
+        <div id="login2Feedback" class="feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD GURU -->
+  <div id="teacherPage" class="page hidden">
+    <div class="teacher-header">
+      <h2>PANEL KONTROL GURU / PENGAWAS</h2>
+      <button onclick="location.reload()">Keluar</button>
+    </div>
+    <div class="teacher-content">
+      <div class="panel-box">
+        <h3>Buat / Edit Token</h3>
+        <input type="text" id="newTokenInput" placeholder="Token Baru">
+        <button onclick="saveToken()">Update Token</button>
+        <p>Token Saat Ini: <strong id="activeTokenDisplay">-</strong></p>
+      </div>
+      <div class="panel-box">
+        <h3>Monitoring Peserta Real-Time</h3>
+        <table border="1" width="100%" id="studentTable">
+          <thead>
+            <tr>
+              <th>Nomor</th>
+              <th>Nama</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Nilai</th>
+              <th>Pelanggaran</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- HALAMAN SOAL -->
+  <div id="examPage" class="page hidden">
+    <div class="exam-header">
+      <div class="timer-box" id="timerDisplay">75:00</div>
+      <button class="nav-toggle-btn" onclick="toggleNavGrid()">Nomor Soal ☰</button>
+    </div>
+
+    <div class="exam-body">
+      <div class="question-container">
+        <h4 id="questionSubject">Mata Pelajaran</h4>
+        <div id="questionText">Teks Soal...</div>
+        <div id="optionsContainer" class="options-box"></div>
+
+        <div class="exam-footer">
+          <button id="btnPrev" onclick="prevQuestion()">Sebelumnya</button>
+          <button id="btnDoubt" onclick="toggleDoubt()">Ragu - Ragu</button>
+          <button id="btnNext" onclick="nextQuestion()">Selanjutnya</button>
+        </div>
+      </div>
+
+      <!-- Drawer Navigasi Soal Kanan -->
+      <div class="question-nav-grid hidden" id="navGrid">
+        <h3>Daftar Soal</h3>
+        <div class="grid-buttons" id="gridButtons"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI KUMPULKAN -->
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Konfirmasi Pengumpulan</h3>
+      <p id="confirmWarningText">Apakah kamu sudah yakin ingin mengumpulkan?</p>
+      <label><input type="checkbox" id="confirmCheck" onchange="toggleSubmitBtn()"> Saya telah memeriksa seluruh jawaban.</label>
+      <div class="modal-actions">
+        <button id="btnFinalSubmit" disabled onclick="finalSubmitExam()">Kumpulkan</button>
+        <button onclick="closeConfirmModal()">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HALAMAN HASIL -->
+  <div id="resultPage" class="page hidden">
+    <div class="result-box">
+      <h2>HASIL UJIAN AKADEMIK TNI</h2>
+      <div class="result-stats">
+        <p>Jumlah Benar: <strong id="resCorrect">0</strong></p>
+        <p>Jumlah Salah: <strong id="resWrong">0</strong></p>
+        <p>Jumlah Kosong: <strong id="resEmpty">0</strong></p>
+        <hr>
+        <h1>NILAI AKHIR: <span id="resScore">0</span> / 100</h1>
+      </div>
+    </div>
+  </div>
+
+  <audio id="warningAudio" src="sound1.mp3" preload="auto"></audio>
+  <script src="script.js"></script>
+</body>
+</html>
